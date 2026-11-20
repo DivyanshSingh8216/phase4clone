@@ -40,8 +40,10 @@ def main():
     try:
         con.execute("CREATE TEMP TABLE export_metrics AS SELECT metric_id, metric_name, CAST(period AS DATE) period, department_id, value, unit, caveat, min_group_size FROM all_metrics WHERE metric_id IN (" + ",".join("?" for _ in metrics) + ")", list(metrics))
         con.execute("CREATE TEMP TABLE export_catalog AS SELECT metric_id, metric_name, business_definition, formula, source_table, grain, time_period, unit, good_direction, caveat, minimum_group_size FROM metric_catalog WHERE metric_id IN (" + ",".join("?" for _ in metrics) + ")", list(metrics))
-        con.execute("COPY export_metrics TO ? (FORMAT PARQUET, COMPRESSION ZSTD)", [str(parquet)])
-        con.execute("COPY export_catalog TO ? (FORMAT PARQUET, COMPRESSION ZSTD)", [str(catalog_file)])
+        metrics_sql = str(parquet).replace("'", "''")
+        catalog_sql = str(catalog_file).replace("'", "''")
+        con.execute(f"COPY export_metrics TO '{metrics_sql}' (FORMAT PARQUET, COMPRESSION ZSTD)")
+        con.execute(f"COPY export_catalog TO '{catalog_sql}' (FORMAT PARQUET, COMPRESSION ZSTD)")
         rows = con.execute("SELECT COUNT(*) FROM export_metrics").fetchone()[0]
         cutoff = con.execute("SELECT MAX(period) FROM export_metrics").fetchone()[0]
     finally:
