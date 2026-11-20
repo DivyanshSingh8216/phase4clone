@@ -17,7 +17,7 @@ from data.hierarchy import load_hierarchy
 
 ROOT = Path(__file__).resolve().parent
 PHASE4_ROOT = ROOT.parent
-DB = Path(os.getenv("PULSEIQ_DB_PATH", PHASE4_ROOT.parent / "phase-3" / "outputs" / "pulseiq.duckdb"))
+DB = Path(os.getenv("PULSEIQ_DB_PATH", PHASE4_ROOT / "phase-3" / "outputs" / "pulseiq.duckdb"))
 CONFIG = ROOT / "config"
 
 st.set_page_config(page_title="PulseIQ | Governed KPI Explorer", page_icon="📊", layout="wide")
