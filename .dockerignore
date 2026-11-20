@@ -1,0 +1,8 @@
+**/.git
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/reports
+phase-1/data/
+phase-2/data/
+phase-3/data/
