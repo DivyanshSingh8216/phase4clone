@@ -1,42 +1,30 @@
-# Deployment notes and hosting decision
+# Deployment and production gates
 
-## Candidate hosting options
+## Build context
 
-| Option | Fit for this repository | Important checks before choosing |
-|---|---|---|
-| Streamlit Community Cloud | Fastest low-ops demo for a Streamlit-only dashboard | Private repository access, resource limits, sleep/availability behaviour, secrets, file-size and persistent-storage constraints |
-| Render | Supports separate containerized API and Streamlit services from one repository | Paid instance cost, persistent disk requirements, service sleep policy, region, environment variables and trusted auth proxy |
-| Railway | Convenient container deployment and managed services | Current usage pricing, persistent volume cost, egress, deployment limits and identity integration |
-| AWS App Runner / ECS | More control for a production architecture | IAM, networking, load balancing, secrets, logs, database/storage design and ongoing operational cost |
-
-No current plan prices are hard-coded here because hosting prices and limits change. Verify current provider pricing and service constraints before procurement.
-
-## Selected implementation starting point
-
-The repository includes a Render Blueprint and a Dockerfile. The Docker build context is the repository root:
+The Dockerfile is at the repository root. Build from the root directory:
 
 ```powershell
-docker build -f phase-4/Dockerfile -t pulseiq-phase4 .
-docker run --rm -p 8000:8000 pulseiq-phase4
+docker build -t pulseiq-phase4 .
 ```
 
-The API is the default container command. Run the explorer locally with:
+The image contains the pinned Python dependencies, FastAPI API and local Streamlit entry point. It deliberately does not copy the Phase 3 DuckDB file or employee data into the image. At runtime, mount an approved, read-only warehouse at `/data/pulseiq.duckdb`. Set `PULSEIQ_DB_PATH` if the mount differs.
 
-```powershell
-docker run --rm -p 8501:8501 --entrypoint streamlit pulseiq-phase4 run explorer.py --server.address 0.0.0.0 --server.port 8501
-```
+The Render Blueprint is a deployment template, not evidence of a live deployment. Before using it, configure persistent storage for the database, trusted identity, secret management, TLS, logging and a real data refresh process. The explorer intentionally refuses production mode until its SSO adapter is implemented.
 
-The Docker image copies the Phase 3 DuckDB file into the image. That makes the image reproducible but does not provide a live refresh mechanism. A refreshed warehouse requires a new build/deployment or a separately designed persistent-volume/data-publishing process.
+## Authentication
 
-## Security gates
+- Never publish the development `X-Role` header or environment-based Streamlit role simulation.
+- API production mode accepts role and department claims only from a trusted proxy that strips caller-supplied copies and injects verified claims.
+- The currently exposed company-grain API metrics are restricted to EXECUTIVE. Other roles receive HTTP 403 until approved grants are implemented.
+- Streamlit production access remains blocked until verified SSO/OIDC is integrated. Do not bypass this guard.
 
-- Do not publish the API directly with development `X-Role` authorization.
-- In production API mode, a trusted authentication proxy must strip incoming `X-Authenticated-Role` and `X-Authenticated-Department` headers and inject verified identity claims.
-- The Streamlit explorer fails closed in production mode until an SSO adapter is connected.
-- Store credentials in the host's secret manager, not in GitHub variables or committed files.
-- Use TLS, least-privilege service identities, logs and access monitoring.
-- Do not expose the DuckDB file as a public downloadable asset.
+## Data refresh
 
-## Refresh status
+The supplied Phase 3 warehouse is a fixed snapshot. A scheduled report is not a warehouse refresh. A real refresh requires an approved upstream feed, credentials, data contract, ingestion schedule, durable storage, refresh timestamp and failure alert.
 
-The Phase 3 workbook is a fixed supplied dataset. Phase 4 can generate recurring reports from the committed warehouse, but this is not equivalent to receiving fresh operational data each month. A real production refresh requires an approved live source feed, credentials, data contracts, an ingestion schedule, a refresh timestamp and a failure alert. Those inputs are not present in this ZIP, so no fake refresh job is included.
+The GitHub Actions monthly-report workflow is manual and requires the repository secret `PULSEIQ_DATA_BUNDLE_BASE64`. Its value must be a base64-encoded ZIP containing `pulseiq.duckdb` and the Phase 3 evidence CSVs at the archive root. The workflow fails clearly if the secret is absent. Do not commit the data bundle or put it in public artifacts.
+
+## External acceptance evidence
+
+Cloud account provisioning, persistent storage, SSO, secrets, DNS/TLS, public URL, live phone test and independent-user test are not completed by repository commits. Record actual evidence for each before declaring production acceptance.
