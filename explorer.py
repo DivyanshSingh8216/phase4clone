@@ -11,6 +11,17 @@ ROOT = Path(__file__).resolve().parent
 DB = Path(os.getenv("PULSEIQ_DB_PATH", "/data/pulseiq.duckdb"))
 
 st.set_page_config(page_title="PulseIQ KPI Explorer", page_icon="📈", layout="wide")
+
+# This legacy password-gated preview is not production authentication.
+# Production deployments must use the authenticated streamlit_app.py entry point.
+AUTH_MODE = os.getenv("PULSEIQ_AUTH_MODE", "production").strip().lower()
+if AUTH_MODE == "production":
+    st.error(
+        "This legacy executive preview is disabled in production. "
+        "Use the authenticated Streamlit application instead."
+    )
+    st.stop()
+
 st.title("PulseIQ | KPI Explorer")
 st.caption("Executive demo · Governed company-level aggregates only · No employee-level records")
 
