@@ -93,6 +93,17 @@ if dimension in ("department", "team"):
             st.info("No authorised teams are mapped to this department.")
             st.stop()
         team_id = st.selectbox("4. Choose team", teams)
+elif dimension == "source":
+    with duckdb.connect(str(DB), read_only=True) as con:
+        sources = con.execute(
+            "SELECT DISTINCT CAST(department_id AS VARCHAR) FROM all_metrics "
+            "WHERE metric_id = ? AND department_id IS NOT NULL ORDER BY 1",
+            [metric_id],
+        ).fetchdf().iloc[:, 0].dropna().tolist()
+    if not sources:
+        st.info("No source-level aggregates are available for this metric.")
+        st.stop()
+    source_id = st.selectbox("3. Choose source", sources)
 
 grain = permission.metric_grain
 org_key = permission.org_key_column
@@ -169,7 +180,7 @@ if dimension != "company":
         # The source view has already applied the dictionary threshold in SQL.
         # Do not infer a population count from all_metrics or expose employee rows.
         st.caption(f"Privacy threshold: {permission.minimum_group_size}+ records, enforced upstream by the governed Phase 3 view.")
-    elif permission.privacy_mode == "none" and metric_id in {"M23", "M24", "M25"}:
+    elif permission.privacy_mode == "none" and metric_id in {"M23", "M24", "M25", "M26"}:
         # These are operational delivery/velocity aggregates, not employee-level
         # people metrics. M24 is team-grain and is additionally restricted to the
         # manager's explicitly assigned team_ids by the hierarchy scope below.
