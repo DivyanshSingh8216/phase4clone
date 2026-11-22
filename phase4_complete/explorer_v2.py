@@ -117,6 +117,9 @@ if dimension == "department" and grain not in {"department", "team"}:
 if dimension == "company" and grain != "company":
     st.error("This metric is not defined at company grain.")
     st.stop()
+if dimension == "source" and grain != "source":
+    st.error("This metric is not defined at source grain.")
+    st.stop()
 
 period_min = st.date_input("Start date", value=None)
 period_max = st.date_input("End date", value=None)
@@ -148,6 +151,9 @@ elif dimension == "department":
 elif dimension == "team":
     query += f" AND CAST({org_key} AS VARCHAR) = ?"
     params.append(str(team_id))
+elif dimension == "source":
+    query += f" AND CAST({org_key} AS VARCHAR) = ?"
+    params.append(str(source_id))
 query += " ORDER BY period"
 
 try:
