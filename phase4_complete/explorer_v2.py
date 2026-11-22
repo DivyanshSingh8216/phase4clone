@@ -169,6 +169,11 @@ if dimension != "company":
         # The source view has already applied the dictionary threshold in SQL.
         # Do not infer a population count from all_metrics or expose employee rows.
         st.caption(f"Privacy threshold: {permission.minimum_group_size}+ records, enforced upstream by the governed Phase 3 view.")
+    elif permission.privacy_mode == "none" and metric_id in {"M23", "M24", "M25"}:
+        # These are operational delivery/velocity aggregates, not employee-level
+        # people metrics. M24 is team-grain and is additionally restricted to the
+        # manager's explicitly assigned team_ids by the hierarchy scope below.
+        st.caption("Operational aggregate. No employee-level records are exposed.")
     else:
         st.error("No approved privacy enforcement is configured for this non-company view. Results withheld.")
         st.stop()
