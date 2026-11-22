@@ -8,14 +8,22 @@ The Streamlit entry point is `streamlit_app.py`. Deploy the `phase4-complete` br
 
 The app uses Streamlit OIDC sign-in, maps the verified email to an approved `user_id`, and reads role/scope from `phase4_complete/config/demo_users.csv`. It downloads a hosted HTTPS DuckDB snapshot, verifies its SHA-256 checksum and required tables, and opens it read-only. No laptop upload or committed database is used.
 
-## Current role-policy status
+## Task 18 role and metric access policy
 
-The committed policy is intentionally conservative:
-- EXECUTIVE: M16, M17, M18, M21 and M22 at company grain.
-- HR: M27 at department grain, with the upstream minimum-group threshold of 10.
-- ADMIN and MANAGER: no KPI grants pending department-specific metric mapping and approval.
+The permission registry is role-specific and covers all 28 catalogue IDs. Access is not a blanket grant of the same five metrics to every role.
 
-The 28-metric dictionary defines metric semantics, ownership and thresholds; it does not by itself approve role entitlements. The Task 18 matrix must be mapped to each department's responsibilities and approved by the data owner and HR/privacy owner. The existing hierarchy CSV must be checked against the approved source before production use.
+| Role | Approved metric scope |
+|---|---|
+| ADMIN | All catalogue metrics, restricted to each metric's actual company, department, or team grain. Administrative access does not bypass source-view privacy suppression. |
+| HR | HR Analytics metrics M01-M06 and M13-M14, plus the governed AI/ML high-risk share M27. No payroll amount or finance-ledger metrics are granted by the HR role. |
+| MANAGER | Department-scoped headcount/attrition/attendance and cost metrics (M01, M04-M05, M09-M10, M13-M14), plus operational delivery metrics M23-M25. M24 is team-grain and limited to the manager's assigned team IDs. |
+| EXECUTIVE | All catalogue metrics at their source-defined grain. Company-grain metrics remain company-only; department/team metrics are shown only at their defined grain and remain subject to privacy rules. |
+
+The registry applies the metric catalogue's documented minimum-group thresholds to people/payroll/finance metrics where present. The upstream governed Phase 3 views enforce these thresholds; M27 retains its threshold of 10 and must never identify or rank named employees. M23-M25 are operational delivery/velocity aggregates and are allowed without an employee-count threshold. M24 stores team IDs in the `department_id` field of `all_metrics`, as documented in the metric view.
+
+M28 is present in the catalogue and permission registry but currently has no rows because matching actual headcount is unavailable for the forecast periods. The explorer reports it as unavailable rather than manufacturing forecast accuracy.
+
+Manager scope comes only from the approved `demo_users.csv` department/team assignments and the hierarchy file. No department/team mapping is inferred from metric ownership. The current demo manager is scoped to D01 and T01/T02. Before production, the hierarchy and role grants must be approved by the data owner and HR/privacy owner; the ADMIN role is privileged and must be assigned only to trusted administrators.
 
 ## Other Phase 4 deliverables
 
