@@ -1,1 +1,7 @@
-role,metric_id,allowed_dimensions,minimum_group_size,metric_grain,org_key_column,group_size_column
+role,metric_id,allowed_dimensions,minimum_group_size,metric_grain,org_key_column,group_size_column,privacy_mode
+EXECUTIVE,M16,company,,company,department_id,,none
+EXECUTIVE,M17,company,,company,department_id,,none
+EXECUTIVE,M18,company,,company,department_id,,none
+EXECUTIVE,M21,company,,company,department_id,,none
+EXECUTIVE,M22,company,,company,department_id,,none
+HR,M27,department,10,department,department_id,,governed_view
