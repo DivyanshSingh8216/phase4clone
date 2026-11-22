@@ -14,7 +14,7 @@ def test_role_metric_sets_match_department_responsibilities():
     expected = {
         "ADMIN": {f"M{i:02d}" for i in range(1, 29)},
         "HR": {*(f"M{i:02d}" for i in range(1, 16)), "M27", "M28"},
-        "MANAGER": {*(f"M{i:02d}" for i in range(1, 7)), *(f"M{i:02d}" for i in range(9, 15)), "M24"},
+        "MANAGER": {*(f"M{i:02d}" for i in range(1, 7)), *(f"M{i:02d}" for i in range(9, 16)), "M24"},
         "EXECUTIVE": {*(f"M{i:02d}" for i in range(16, 21)), "M21", "M22", "M23", "M25", "M26"},
     }
     for role, metric_ids in expected.items():
