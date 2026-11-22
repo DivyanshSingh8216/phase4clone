@@ -1,24 +1,24 @@
-# Blueprint starting point. Configure verified identity and persistent data refresh before public use.
+# Deployment template only. Do not expose publicly until SSO, persistent data and live tests are configured.
 services:
   - type: web
     name: pulseiq-metrics-api
     runtime: docker
     dockerContext: .
-    dockerfilePath: ./phase-4/Dockerfile
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     envVars:
       - key: PULSEIQ_AUTH_MODE
         value: production
       - key: PULSEIQ_DB_PATH
-        value: /app/phase-3/outputs/pulseiq.duckdb
+        value: /data/pulseiq.duckdb
   - type: web
     name: pulseiq-kpi-explorer
     runtime: docker
     dockerContext: .
-    dockerfilePath: ./phase-4/Dockerfile
+    dockerfilePath: ./Dockerfile
     dockerCommand: streamlit run explorer.py --server.address 0.0.0.0 --server.port $PORT
     envVars:
       - key: PULSEIQ_DB_PATH
-        value: /app/phase-3/outputs/pulseiq.duckdb
+        value: /data/pulseiq.duckdb
       - key: PULSEIQ_AUTH_MODE
         value: production
