@@ -1,6 +1,8 @@
 name: PulseIQ monthly report
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "0 3 1 * *" # 03:00 UTC on the first day of each month
 permissions:
   contents: read
   actions: read
@@ -28,11 +30,13 @@ jobs:
           test -f phase3-data/pulseiq.duckdb
       - name: Install pinned Phase 4 dependencies
         run: python -m pip install -r requirements.txt
-      - name: Build report
+      - name: Build previous calendar month's report
         env:
           PULSEIQ_DB_PATH: ${{ github.workspace }}/phase3-data/pulseiq.duckdb
         run: |
-          python build_report.py --start 2025-04-01 --end "$(date -u +%Y-%m-%d)" --format both
+          START_DATE="$(date -u -d "$(date -u +%Y-%m-01) -1 month" +%Y-%m-01)"
+          END_DATE="$(date -u -d "$(date -u +%Y-%m-01) -1 day" +%Y-%m-%d)"
+          python build_report.py --start "$START_DATE" --end "$END_DATE" --cutoff "$END_DATE" --format both
       - uses: actions/upload-artifact@v4
         with:
           name: pulseiq-monthly-report
