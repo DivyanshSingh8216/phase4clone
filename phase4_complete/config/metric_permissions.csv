@@ -56,6 +56,7 @@ MANAGER,M11,department,5,department,department_id,,governed_view
 MANAGER,M12,department,5,department,department_id,,governed_view
 MANAGER,M13,department,5,department,department_id,,governed_view
 MANAGER,M14,department,5,department,department_id,,governed_view
+MANAGER,M15,department,5,department,department_id,,governed_view
 MANAGER,M24,team,,team,department_id,,none
 EXECUTIVE,M16,company,,company,department_id,,none
 EXECUTIVE,M17,company,,company,department_id,,none
