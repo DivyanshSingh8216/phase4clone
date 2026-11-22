@@ -16,10 +16,10 @@ The permission registry is role-specific and covers all 28 catalogue IDs. Access
 |---|---|
 | ADMIN | All catalogue metrics, restricted to each metric's actual company, department, or team grain. Administrative access does not bypass source-view privacy suppression. |
 | HR | HR Analytics metrics M01-M06 and M13-M14, plus the governed AI/ML high-risk share M27. No payroll amount or finance-ledger metrics are granted by the HR role. |
-| MANAGER | Department-scoped headcount/attrition/attendance and cost metrics (M01, M04-M05, M09-M10, M13-M14), plus operational delivery metrics M23-M25. M24 is team-grain and limited to the manager's assigned team IDs. |
+| MANAGER | Department-scoped headcount/attrition/attendance and cost metrics (M01, M04-M05, M09-M10, M13-M14), plus operational delivery metrics M22-M25. M22-M25 are team-grain and limited to the manager's assigned team IDs. |
 | EXECUTIVE | All catalogue metrics at their source-defined grain. Company-grain metrics remain company-only; department/team metrics are shown only at their defined grain and remain subject to privacy rules. |
 
-The registry applies the metric catalogue's documented minimum-group thresholds to people/payroll/finance metrics where present. The upstream governed Phase 3 views enforce these thresholds; M27 retains its threshold of 10 and must never identify or rank named employees. M23-M25 are operational delivery/velocity aggregates and are allowed without an employee-count threshold. M24 stores team IDs in the `department_id` field of `all_metrics`, as documented in the metric view.
+The registry applies the metric catalogue's documented minimum-group thresholds to people/payroll/finance metrics where present. The upstream governed Phase 3 views enforce these thresholds; M27 retains its threshold of 10 and must never identify or rank named employees. M24 is an operational velocity aggregate and are allowed without an employee-count threshold. M22-M25 store team IDs in the `department_id` field of `all_metrics`, as documented in the metric view.
 
 M28 is present in the catalogue and permission registry but currently has no rows because matching actual headcount is unavailable for the forecast periods. The explorer reports it as unavailable rather than manufacturing forecast accuracy.
 
