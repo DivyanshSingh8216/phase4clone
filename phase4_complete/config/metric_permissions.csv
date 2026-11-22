@@ -24,7 +24,7 @@ ADMIN,M22,team,5,team,department_id,,governed_view
 ADMIN,M23,team,5,team,department_id,,governed_view
 ADMIN,M24,team,,team,department_id,,none
 ADMIN,M25,team,5,team,department_id,,governed_view
-ADMIN,M26,company,,company,department_id,,none
+ADMIN,M26,source,,source,department_id,,none
 ADMIN,M27,department,10,department,department_id,,governed_view
 ADMIN,M28,department,,department,department_id,,none
 EXECUTIVE,M01,department,5,department,department_id,,governed_view
@@ -52,7 +52,7 @@ EXECUTIVE,M22,team,5,team,department_id,,governed_view
 EXECUTIVE,M23,team,5,team,department_id,,governed_view
 EXECUTIVE,M24,team,,team,department_id,,none
 EXECUTIVE,M25,team,5,team,department_id,,governed_view
-EXECUTIVE,M26,company,,company,department_id,,none
+EXECUTIVE,M26,source,,source,department_id,,none
 EXECUTIVE,M27,department,10,department,department_id,,governed_view
 EXECUTIVE,M28,department,,department,department_id,,none
 HR,M01,department,5,department,department_id,,governed_view
@@ -71,6 +71,7 @@ MANAGER,M09,department,5,department,department_id,,governed_view
 MANAGER,M10,department,5,department,department_id,,governed_view
 MANAGER,M13,department,5,department,department_id,,governed_view
 MANAGER,M14,department,5,department,department_id,,governed_view
+MANAGER,M22,team,5,team,department_id,,governed_view
 MANAGER,M23,team,5,team,department_id,,governed_view
 MANAGER,M24,team,,team,department_id,,none
 MANAGER,M25,team,5,team,department_id,,governed_view
