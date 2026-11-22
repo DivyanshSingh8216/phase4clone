@@ -7,7 +7,7 @@ Phase 4 is an additive layer over the Phase 3 DuckDB warehouse. It must not modi
 | Task | Included implementation |
 |---|---|
 | 16 | PDF/XLSX monthly report builder, governed KPI snapshot, supporting Phase 3 evidence tables, privacy filters |
-| 17 | Dockerfile and Render deployment template. Public deployment is gated on persistent data, verified SSO, secrets, TLS and live acceptance |
+| 17 | Password-gated, executive-only Render dashboard preview with persistent-disk configuration. Full SSO and four-role acceptance remain open |
 | 18 | Conservative role/metric policy foundation, privacy helpers and tests. Full role matrix, cascading hierarchy and production acceptance are not claimed |
 | 19 | Read-only FastAPI endpoints for five company-grain KPIs, definitions, source lineage and latest available data period |
 | 20 | Editable board deck, release notes, release validator and acceptance checklist |
@@ -18,9 +18,9 @@ Phase 4 is an additive layer over the Phase 3 DuckDB warehouse. It must not modi
 - The five API KPIs (M16, M17, M18, M21, M22) are company-grain. The API currently grants them to EXECUTIVE only. Other roles are denied until an approved metric permission matrix exists.
 - The separate `phase4_complete` policy registry is conservative: EXECUTIVE has company-grain grants; HR has M27 department-grain access using the upstream governed view. ADMIN and MANAGER have no KPI grants. This is intentional, not a claim that all four roles have completed self-service access.
 - M24 team-grain and M28 forecast accuracy are not exposed as privacy-safe metrics. No team threshold or forecast actuals are invented.
-- The Streamlit app is local-demo only. It stops in production mode until verified SSO is integrated. Do not publish development mode.
+- The Render preview is password-gated and exposes only company-level M16, M17, M18, M21 and M22. It is an executive-only demo, not SSO or the completed four-role Task 18 system. Configure `PULSEIQ_DEMO_PASSWORD` as a Render secret and place the approved Phase 3 DuckDB file on the persistent disk at `/data/pulseiq.duckdb`.
 - A scheduled GitHub report build is deliberately manual. It requires the GitHub Actions secret `PULSEIQ_DATA_BUNDLE_BASE64`, containing a base64-encoded ZIP with `pulseiq.duckdb` and the Phase 3 evidence CSVs at the ZIP root.
-- No live URL, SSO, phone test, stranger test or final demo recording is claimed.
+- No live URL, SSO, phone test, independent-user test or final demo recording is claimed until evidence is collected.
 
 ## Windows setup and verification
 
@@ -83,15 +83,9 @@ try { Invoke-RestMethod http://127.0.0.1:8000/v1/metrics -Headers @{ "X-Role" = 
 
 Expected: HTTP 403 for HR on this API catalogue. Also verify an unknown metric returns 404. Open `http://127.0.0.1:8000/docs` for OpenAPI documentation.
 
-### 4. Verify the explorer locally
+### 4. Deploy the executive preview on Render
 
-```powershell
-$env:PULSEIQ_AUTH_MODE = "development"
-$env:PULSEIQ_ROLE = "EXECUTIVE"
-streamlit run explorer.py
-```
-
-This is a local demonstration only, not production authentication. Stop the process with Ctrl+C.
+Follow [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). The Render Blueprint creates a password-gated executive-only dashboard and persistent disk. Set `PULSEIQ_DEMO_PASSWORD` as a secret, then place the approved Phase 3 DuckDB file at `/data/pulseiq.duckdb`. Do not commit the database or password. This preview does not satisfy SSO or four-role acceptance.
 
 ### 5. Verify the container build
 
