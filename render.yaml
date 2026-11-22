@@ -1,24 +1,21 @@
-# Deployment template only. Do not expose publicly until SSO, persistent data and live tests are configured.
+# Render deployment for a password-gated executive-only dashboard preview.
+# Add PULSEIQ_DEMO_PASSWORD as a secret in the Render service environment.
+# Upload the approved Phase 3 DuckDB file to /data/pulseiq.duckdb after the disk is mounted.
 services:
-  - type: web
-    name: pulseiq-metrics-api
-    runtime: docker
-    dockerContext: .
-    dockerfilePath: ./Dockerfile
-    healthCheckPath: /health
-    envVars:
-      - key: PULSEIQ_AUTH_MODE
-        value: production
-      - key: PULSEIQ_DB_PATH
-        value: /data/pulseiq.duckdb
   - type: web
     name: pulseiq-kpi-explorer
     runtime: docker
+    plan: starter
     dockerContext: .
     dockerfilePath: ./Dockerfile
-    dockerCommand: streamlit run explorer.py --server.address 0.0.0.0 --server.port $PORT
+    dockerCommand: streamlit run explorer.py --server.address 0.0.0.0 --server.port $PORT --server.headless true
+    healthCheckPath: /_stcore/health
+    disk:
+      name: pulseiq-warehouse
+      mountPath: /data
+      sizeGB: 1
     envVars:
       - key: PULSEIQ_DB_PATH
         value: /data/pulseiq.duckdb
-      - key: PULSEIQ_AUTH_MODE
-        value: production
+      - key: PULSEIQ_DEMO_PASSWORD
+        sync: false
