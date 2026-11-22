@@ -1,5 +1,5 @@
 user_id,role,department_id,team_ids
 demo_admin,ADMIN,,
 demo_hr,HR,,
+demo_manager_d01,MANAGER,D01,T01;T02
 demo_executive,EXECUTIVE,,
-demo_manager_engineering,MANAGER,D01,T01
