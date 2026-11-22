@@ -34,7 +34,25 @@ if not st.session_state.get("pulseiq_authenticated", False):
     st.stop()
 
 if not DB.exists():
-    st.error(f"Warehouse not found at {DB}. Attach the approved Phase 3 DuckDB file to persistent storage.")
+    st.warning("The Phase 3 warehouse has not been installed on this service yet.")
+    uploaded_db = st.file_uploader("Upload the approved Phase 3 DuckDB warehouse", type=["duckdb", "db"])
+    if uploaded_db is not None and st.button("Install warehouse on persistent disk"):
+        temp_db = DB.with_suffix(".uploading")
+        try:
+            DB.parent.mkdir(parents=True, exist_ok=True)
+            temp_db.write_bytes(uploaded_db.getvalue())
+            with duckdb.connect(str(temp_db), read_only=True) as check:
+                tables = {r[0] for r in check.execute("SHOW TABLES").fetchall()}
+                required = {"all_metrics", "metric_catalog"}
+                if not required.issubset(tables):
+                    raise ValueError("Uploaded database is missing required governed tables: all_metrics and metric_catalog.")
+            os.replace(temp_db, DB)
+            st.success("Warehouse installed on persistent storage.")
+            st.rerun()
+        except Exception as exc:
+            if temp_db.exists():
+                temp_db.unlink()
+            st.error(f"Warehouse upload rejected: {exc}")
     st.stop()
 
 try:
