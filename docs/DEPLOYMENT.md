@@ -1,30 +1,52 @@
-# Deployment and production gates
+# Deployment guide
 
-## Build context
+## Fast hosted preview: Render
 
-The Dockerfile is at the repository root. Build from the root directory:
+The repository now includes a Render Blueprint for a **password-gated, executive-only dashboard preview**. It is deliberately narrower than the final four-role production system.
+
+1. Push/pull the latest `phase4-complete` branch and open the repository in Render.
+2. Choose **New + → Blueprint**, select this repository and branch, then apply `render.yaml`.
+3. In the created `pulseiq-kpi-explorer` service, add the secret environment variable `PULSEIQ_DEMO_PASSWORD`. Use a strong, unique password and do not commit it.
+4. Wait for the Docker build and deployment to finish. Confirm the health check `/_stcore/health` passes.
+5. Open the Render Shell for the service and confirm the persistent disk is mounted at `/data`.
+6. Upload the approved Phase 3 warehouse file to `/data/pulseiq.duckdb`. Do not upload the original source workbook and do not put the database in Git.
+7. Confirm the file exists and is readable:
+   ```bash
+   ls -lh /data/pulseiq.duckdb
+   ```
+8. Restart/redeploy the service if needed, open its public URL, sign in with the configured demo password, and verify M16, M17, M18, M21 and M22.
+
+The Render Blueprint requests a Starter web service and a 1 GB persistent disk. Persistent disks require a paid Render service. The database is intentionally not packaged in the Docker image. If Render Shell is unavailable on the selected plan, use an approved secure transfer method to place the database on the mounted disk.
+
+## What this preview does and does not prove
+
+- It exposes only company-grain M16, M17, M18, M21 and M22.
+- A shared demo password gates access. This is suitable for a controlled demonstration, **not SSO, not individual user authentication, and not the four-role Task 18 acceptance test**.
+- No HR, ADMIN or MANAGER role switching is exposed in this public preview.
+- The API is not part of this single-service preview. Keep the API private until verified identity claims and a trusted proxy are configured.
+- The preview uses a fixed Phase 3 snapshot. It does not implement automated warehouse refresh, alerting or freshness orchestration.
+
+## Local container check
+
+Run from the repository root:
 
 ```powershell
 docker build -t pulseiq-phase4 .
+docker run --rm -p 8501:8501 -e PULSEIQ_DEMO_PASSWORD="local-demo-password" -e PULSEIQ_DB_PATH=/data/pulseiq.duckdb -v "C:\\path\\to\\outputs:/data:ro" pulseiq-phase4 streamlit run explorer.py --server.address 0.0.0.0 --server.port 8501
 ```
 
-The image contains the pinned Python dependencies, FastAPI API and local Streamlit entry point. It deliberately does not copy the Phase 3 DuckDB file or employee data into the image. At runtime, mount an approved, read-only warehouse at `/data/pulseiq.duckdb`. Set `PULSEIQ_DB_PATH` if the mount differs.
+The mounted folder must contain the approved `pulseiq.duckdb`. The source workbook remains untouched.
 
-The Render Blueprint is a deployment template, not evidence of a live deployment. Before using it, configure persistent storage for the database, trusted identity, secret management, TLS, logging and a real data refresh process. The explorer intentionally refuses production mode until its SSO adapter is implemented.
+## API deployment gate
 
-## Authentication
+Do not expose `api.py` publicly until a trusted authentication proxy or OIDC integration is configured to verify identity and strip caller-supplied `X-Authenticated-Role` and `X-Authenticated-Department` headers. The API's current production headers are trusted-proxy claims, not self-authenticating credentials.
 
-- Never publish the development `X-Role` header or environment-based Streamlit role simulation.
-- API production mode accepts role and department claims only from a trusted proxy that strips caller-supplied copies and injects verified claims.
-- The currently exposed company-grain API metrics are restricted to EXECUTIVE. Other roles receive HTTP 403 until approved grants are implemented.
-- Streamlit production access remains blocked until verified SSO/OIDC is integrated. Do not bypass this guard.
+## Full production acceptance still requires
 
-## Data refresh
-
-The supplied Phase 3 warehouse is a fixed snapshot. A scheduled report is not a warehouse refresh. A real refresh requires an approved upstream feed, credentials, data contract, ingestion schedule, durable storage, refresh timestamp and failure alert.
-
-The GitHub Actions monthly-report workflow is manual and requires the repository secret `PULSEIQ_DATA_BUNDLE_BASE64`. Its value must be a base64-encoded ZIP containing `pulseiq.duckdb` and the Phase 3 evidence CSVs at the archive root. The workflow fails clearly if the secret is absent. Do not commit the data bundle or put it in public artifacts.
-
-## External acceptance evidence
-
-Cloud account provisioning, persistent storage, SSO, secrets, DNS/TLS, public URL, live phone test and independent-user test are not completed by repository commits. Record actual evidence for each before declaring production acceptance.
+1. Approved SSO/OIDC and role-to-user mapping.
+2. Owner-approved four-role metric/dimension permissions and authoritative department/team hierarchy.
+3. Privacy tests against small groups, differencing and adversarial filters.
+4. Approved refresh pipeline, persistent warehouse, timestamp and failure alerts.
+5. Separate API deployment behind verified identity, with API docs and lineage tests.
+6. Live URL, phone and independent-user test evidence.
+7. Reconciled PDF/XLSX, board deck, final challenge evidence and release tag.
