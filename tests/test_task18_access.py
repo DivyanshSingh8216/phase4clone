@@ -28,7 +28,7 @@ def test_hr_receives_people_metrics_not_payroll_or_finance_amounts():
 def test_manager_receives_only_assigned_scope_metric_set():
     permissions = load_permissions(POLICY)
     actual = {metric for (role, metric) in permissions if role == "MANAGER"}
-    assert actual == {"M01", "M04", "M05", "M09", "M10", "M13", "M14", "M23", "M24", "M25"}
+    assert actual == {"M01", "M04", "M05", "M09", "M10", "M13", "M14", "M22", "M23", "M24", "M25"}
     manager = Principal("demo_manager_d01", "MANAGER", "D01", ("T01", "T02"))
     permission = authorize_metric(manager, "M24", permissions)
     assert authorize_dimension(manager, permission, "team") == "team"
@@ -59,7 +59,7 @@ def test_people_metrics_keep_catalogue_privacy_thresholds():
 def test_company_and_team_grain_are_not_relabelled_as_department_grain():
     permissions = load_permissions(POLICY)
     for role in ("ADMIN", "EXECUTIVE"):
-        for metric in ("M16", "M17", "M18", "M19", "M20", "M21", "M22"):
+        for metric in ("M16", "M17", "M18", "M19", "M20", "M21", "M26"):
             assert permissions[(role, metric)].metric_grain == "company"
             assert permissions[(role, metric)].dimensions == ("company",)
         assert permissions[(role, "M24")].metric_grain == "team"
