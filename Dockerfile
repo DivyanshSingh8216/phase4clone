@@ -5,7 +5,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PULSEIQ_DB_PATH=/data/pulseiq.d
 WORKDIR /app
 COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
-COPY api.py access_control.py ./
+COPY api.py explorer.py access_control.py ./
 COPY phase4_complete ./phase4_complete
 COPY docs ./docs
 EXPOSE 8000
