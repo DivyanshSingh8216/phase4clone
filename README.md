@@ -10,12 +10,13 @@ The app uses Streamlit OIDC sign-in, maps the verified email to an approved `use
 
 ## Current role-policy status
 
-The committed policy is intentionally conservative:
+The committed demo policy now grants:
+- ADMIN: M16, M17, M18, M21 and M22 at company grain, plus M27 at department grain.
 - EXECUTIVE: M16, M17, M18, M21 and M22 at company grain.
-- HR: M27 at department grain, with the upstream minimum-group threshold of 10.
-- ADMIN and MANAGER: no KPI grants.
+- HR: M27 at department grain, with a minimum-group threshold of 10 enforced by the governed source view.
+- MANAGER: M27 at department grain, restricted in the explorer to the manager's assigned department (D01 in the demo registry); the governed source view enforces the minimum-group threshold of 10.
 
-The current policy does not yet meet the complete four-role company → department → team self-service requirement. Do not mark Task 18 accepted or add access grants without the official metric dictionary, owner approval and authoritative hierarchy. The existing hierarchy CSV must be checked against the approved source before production use.
+The demo hierarchy and user assignments are illustrative. Before production, the data owner must approve the metric grants and validate the hierarchy against an authoritative source. Task 18 still requires end-to-end role screenshots, live break-it testing, and confirmation that the upstream M27 view suppresses groups below 10.
 
 ## Other Phase 4 deliverables
 
