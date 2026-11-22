@@ -1,104 +1,119 @@
-# PulseIQ Phase 4 | Release, access, APIs and handover
+# PulseIQ Phase 4 | Release candidate and verification
 
-Phase 4 adds release tooling to the Phase 3 DuckDB warehouse. It is additive: it reads the Phase 3 database and exports derived reports; it does not edit the source workbook or earlier phase folders.
+Phase 4 is an additive layer over the Phase 3 DuckDB warehouse. It must not modify the original `PulseIQ_Dataset.xlsx` or Phase 1-3 source artifacts. Run Phase 4 against a copy or read-only warehouse.
 
-## Included deliverables
+## Repository deliverables
 
-| Day | Deliverable | Entry point |
-|---|---|---|
-| 16 | Monthly PDF/XLSX reporting with five evidence tables, date range and cutoff | `python build_report.py --start 2025-04-01 --end 2026-09-30 --format both` |
-| 17 | Container-ready Streamlit/API deployment configuration and scheduled GitHub Actions refresh | `Dockerfile`, `render.yaml`, `.github/workflows/monthly-report.yml` |
-| 18 | Role-aware KPI explorer with department/team drilldown hooks, server-side access checks and small-group suppression | `streamlit run explorer.py` |
-| 19 | FastAPI metrics API, metric definitions, source lineage and freshness metadata | `uvicorn api:app --host 0.0.0.0 --port 8000` |
-| 20 | Board-pack narrative, release notes, handover and validation scripts | `docs/BOARD_PACK.md`, `RELEASE_NOTES.md`, `scripts/validate_release.py` |
+| Task | Included implementation |
+|---|---|
+| 16 | PDF/XLSX monthly report builder, governed KPI snapshot, supporting Phase 3 evidence tables, privacy filters |
+| 17 | Dockerfile and Render deployment template. Public deployment is gated on persistent data, verified SSO, secrets, TLS and live acceptance |
+| 18 | Conservative role/metric policy foundation, privacy helpers and tests. Full role matrix, cascading hierarchy and production acceptance are not claimed |
+| 19 | Read-only FastAPI endpoints for five company-grain KPIs, definitions, source lineage and latest available data period |
+| 20 | Editable board deck, release notes, release validator and acceptance checklist |
 
-## Data contract and safety
+## Important data and access limitations
 
-- Warehouse path defaults to `../phase-3/outputs/pulseiq.duckdb` relative to this directory. Override with `PULSEIQ_DB_PATH`.
-- The original `phase-3/data/PulseIQ_Dataset.xlsx` is read-only and is never opened for writing by Phase 4.
-- Report and API metrics come from Phase 3's governed `all_metrics` and `metric_catalog` views. The five board/report KPIs are M16 Revenue, M17 Net profit, M18 Operating margin, M21 Overdue receivables and M22 Task completion rate.
-- Missing values remain missing. A missing value is never silently converted to zero.
-- The explorer/API never accept raw SQL from a user. Role authorization and minimum-group suppression are applied in the backend.
-- `ADMIN` and `HR` can inspect department aggregates; `EXECUTIVE` sees company-level rows only; `MANAGER` is restricted to the department ID in the trusted server-side assignment. Department breakdowns exclude the company total to reduce simple differencing risk. Do not trust a department ID supplied by a browser.
-- Groups smaller than the metric's `minimum_group_size` are suppressed. Where the metric has no threshold, no new threshold is invented. Do not use the explorer for employee-level data.
+- The Phase 3 DuckDB file and its companion evidence CSVs are not included in this repository. Set `PULSEIQ_DB_PATH` to the actual warehouse file.
+- The five API KPIs (M16, M17, M18, M21, M22) are company-grain. The API currently grants them to EXECUTIVE only. Other roles are denied until an approved metric permission matrix exists.
+- The separate `phase4_complete` policy registry is conservative: EXECUTIVE has company-grain grants; HR has M27 department-grain access using the upstream governed view. ADMIN and MANAGER have no KPI grants. This is intentional, not a claim that all four roles have completed self-service access.
+- M24 team-grain and M28 forecast accuracy are not exposed as privacy-safe metrics. No team threshold or forecast actuals are invented.
+- The Streamlit app is local-demo only. It stops in production mode until verified SSO is integrated. Do not publish development mode.
+- A scheduled GitHub report build is deliberately manual. It requires the GitHub Actions secret `PULSEIQ_DATA_BUNDLE_BASE64`, containing a base64-encoded ZIP with `pulseiq.duckdb` and the Phase 3 evidence CSVs at the ZIP root.
+- No live URL, SSO, phone test, stranger test or final demo recording is claimed.
 
-## Setup (Windows PowerShell)
+## Windows setup and verification
+
+Run from the repository root:
 
 ```powershell
-cd path\to\pulseiq-main\phase-4
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
+$env:PULSEIQ_DB_PATH = "C:\path\to\pulseiq.duckdb"
 ```
 
-Set the warehouse path if your directory layout differs:
+The CSV evidence files used by the report builder must sit in the same directory as the DuckDB file. Preserve the original source workbook. Do not copy over it.
 
-```powershell
-$env:PULSEIQ_DB_PATH = (Resolve-Path ..\phase-3\outputs\pulseiq.duckdb).Path
-```
-
-### Monthly report
-
-```powershell
-python build_report.py --start 2025-04-01 --end 2026-09-30 --format both
-```
-
-Files are written to `phase-4/reports/`. Use `--format pdf`, `--format xlsx`, or `--format both`. `--cutoff` may be supplied as an ISO date; otherwise the latest date found in the selected governed metric data is used.
-
-### KPI explorer
-
-```powershell
-streamlit run explorer.py
-```
-
-For local role simulation, set environment variables before starting Streamlit:
-
-```powershell
-$env:PULSEIQ_ROLE = "EXECUTIVE"  # ADMIN, EXECUTIVE, HR, MANAGER
-$env:PULSEIQ_MANAGER_DEPARTMENT = "YOUR_DEPARTMENT_ID"
-```
-
-The explorer intentionally refuses to start when `PULSEIQ_AUTH_MODE=production` until a verified SSO adapter is implemented. Do not expose the development mode publicly. The deployment blueprint sets production mode so the app fails closed rather than silently treating every visitor as an executive.
-
-### Metrics API
-
-```powershell
-uvicorn api:app --host 127.0.0.1 --port 8000
-```
-
-Open `/docs` for interactive OpenAPI documentation.
-
-Example:
-
-```powershell
-Invoke-RestMethod "http://127.0.0.1:8000/v1/metrics/M16?period=2026-09-01"
-```
-
-Send `X-Role` for role selection in local development. In production, set `PULSEIQ_AUTH_MODE=production` and configure a trusted reverse proxy to strip caller-supplied `X-Authenticated-Role` / `X-Authenticated-Department` headers and inject verified claims. The Render blueprint uses production mode. Never trust `X-Role` from a public client.
-
-## Deployment
-
-`Dockerfile` and `render.yaml` provide a reproducible container deployment starting point. The Streamlit app and API are separate services. Mount or publish a refreshed DuckDB file at the configured path; never put credentials in source control. `.github/workflows/monthly-report.yml` demonstrates a scheduled GitHub Actions report build and artifact upload.
-
-**Not performed by this source package:** cloud account provisioning, secrets creation, SSO configuration, DNS/TLS, public deployment, or live URL verification. Those require access to the target hosting account and production identity provider. Do not describe the application as live until the deployment URL has been tested.
-
-### Regenerate the board deck
-
-```powershell
-python board_pack.py
-```
-
-The editable 8-slide deck is saved to `board_pack/PulseIQ_Board_Pack_Phase4.pptx`.
-
-## Validation
+### 1. Automated tests and release-file check
 
 ```powershell
 python -m pytest -q
 python scripts\validate_release.py
 ```
 
-The tests use temporary SQLite-independent fixtures/mocks for pure policy and formatting logic. End-to-end warehouse queries require the Phase 3 DuckDB database and the pinned DuckDB dependency. Run the full acceptance checklist in `docs/ACCEPTANCE_CHECKLIST.md` on the target Windows machine before tagging a release.
+To verify the three original source workbook hashes, set `PULSEIQ_SOURCE_ROOT` to the folder containing `phase-1`, `phase-2` and `phase-3`, each with `data\PulseIQ_Dataset.xlsx`:
 
-## Release status
+```powershell
+$env:PULSEIQ_SOURCE_ROOT = "C:\path\to\PulseIQ-Master-Integration"
+python scripts\validate_release.py --require-source-workbooks
+```
 
-This package is a Phase 4 implementation candidate. `v1.0.0-rc1` and `v1.0.0` are Git release tags to create only after local acceptance, privacy tests, deployment checks and final reconciliation pass. No live deployment or release tag is claimed by this package.
+### 2. Generate the PDF and Excel report
+
+Use the date range present in the Phase 3 warehouse:
+
+```powershell
+python build_report.py --start 2025-04-01 --end 2026-09-30 --format both
+```
+
+The report prints the latest period actually present in the selected governed KPI rows as its data cutoff. Check the generated files under `reports\`, open both, and reconcile the KPI values and supporting tables to the Phase 3 outputs.
+
+### 3. Verify the API locally
+
+In PowerShell terminal 1:
+
+```powershell
+uvicorn api:app --host 127.0.0.1 --port 8000
+```
+
+In PowerShell terminal 2:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
+Invoke-RestMethod http://127.0.0.1:8000/v1/metrics -Headers @{ "X-Role" = "EXECUTIVE" }
+Invoke-RestMethod "http://127.0.0.1:8000/v1/metrics/M16?period=2026-09-01" -Headers @{ "X-Role" = "EXECUTIVE" }
+```
+
+Confirm that an unapproved role is denied:
+
+```powershell
+try { Invoke-RestMethod http://127.0.0.1:8000/v1/metrics -Headers @{ "X-Role" = "HR" } } catch { $_.Exception.Response.StatusCode.value__ }
+```
+
+Expected: HTTP 403 for HR on this API catalogue. Also verify an unknown metric returns 404. Open `http://127.0.0.1:8000/docs` for OpenAPI documentation.
+
+### 4. Verify the explorer locally
+
+```powershell
+$env:PULSEIQ_AUTH_MODE = "development"
+$env:PULSEIQ_ROLE = "EXECUTIVE"
+streamlit run explorer.py
+```
+
+This is a local demonstration only, not production authentication. Stop the process with Ctrl+C.
+
+### 5. Verify the container build
+
+Install Docker Desktop and ensure the Phase 3 database is available separately. Build from the repository root:
+
+```powershell
+docker build -t pulseiq-phase4 .
+```
+
+The image does not embed the private warehouse. Run it with a read-only mount of the approved database at `/data/pulseiq.duckdb` and production identity must remain disabled until a trusted authentication proxy is configured.
+
+## Production and submission acceptance gates
+
+Do not mark the project fully accepted or tag `v1.0.0` until all of these are evidenced:
+
+1. Official Task 18 starter files (demo users, metric dictionary and authoritative hierarchy) are reconciled with the committed policy.
+2. Data owner and HR/privacy owner approve the complete role/metric/dimension matrix, including any team-level thresholds.
+3. SSO/OIDC or a trusted identity proxy is configured and caller-supplied identity headers are stripped.
+4. A persistent warehouse and approved refresh source are configured; refresh timestamp and failure alert are tested.
+5. API and dashboard are deployed, live URL is recorded, and phone plus independent-user tests pass.
+6. All four role journeys and adversarial privacy tests pass on the deployed app, including manipulation, differencing and small-group boundaries.
+7. PDF/XLSX outputs and every board slide are reconciled against Phase 3 outputs; missing values remain missing, never zero-filled.
+8. Phase 1-3 source workbook hashes, Phase 3 data-quality/reconciliation checks, latest CI run and final demo evidence are recorded.
+
+The repository contains implementation and reproducible local checks, but the external production gates above require operator credentials and source approvals. Do not present them as complete without evidence.
