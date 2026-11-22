@@ -55,7 +55,10 @@ def main():
           FROM all_metrics GROUP BY 1,2 ORDER BY 1""").fetchdf()
         for i in range(1,29):
             mid=f"M{i:02d}"; m=s[s.metric_id.astype(str)==mid]
-            if m.empty: rows.append({"metric_id":mid,"status":"MISSING","details":"No all_metrics rows"}); continue
+            if m.empty:
+                status="UNAVAILABLE" if mid=="M28" else "MISSING"
+                detail="No forecast accuracy observations; MAPE is unavailable, not zero" if mid=="M28" else "No all_metrics rows"
+                rows.append({"metric_id":mid,"status":status,"details":detail}); continue
             x=m.iloc[0]; status="POPULATED"; detail="Values present; source formula still requires lineage verification"
             if mid=="M28" and int(x.populated)==0: status="UNAVAILABLE"; detail="No MAPE observations; never display as 0%"
             elif mid in {"M21","M27"} and int(x.periods)<=1: status="SNAPSHOT_ONLY"; detail="One reporting period; display as snapshot, not trend"
