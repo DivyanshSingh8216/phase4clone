@@ -59,11 +59,14 @@ def test_people_metrics_keep_catalogue_privacy_thresholds():
 def test_company_and_team_grain_are_not_relabelled_as_department_grain():
     permissions = load_permissions(POLICY)
     for role in ("ADMIN", "EXECUTIVE"):
-        for metric in ("M16", "M17", "M18", "M19", "M20", "M21", "M26"):
+        for metric in ("M16", "M17", "M18", "M19", "M20", "M21"):
             assert permissions[(role, metric)].metric_grain == "company"
             assert permissions[(role, metric)].dimensions == ("company",)
-        assert permissions[(role, "M24")].metric_grain == "team"
-        assert permissions[(role, "M24")].dimensions == ("team",)
+        assert permissions[(role, "M26")].metric_grain == "source"
+        assert permissions[(role, "M26")].dimensions == ("source",)
+        for metric in ("M22", "M23", "M24", "M25"):
+            assert permissions[(role, metric)].metric_grain == "team"
+            assert permissions[(role, metric)].dimensions == ("team",)
 
 
 def test_m28_is_catalogued_but_no_data_is_fabricated():
