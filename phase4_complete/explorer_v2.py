@@ -1,7 +1,7 @@
 """Role-first, dimension-aware PulseIQ explorer.
 
-This is deliberately separate from the historical explorer.py until source dictionaries,
-identity assignments and hierarchy mappings are supplied and acceptance tests pass.
+Only metric/dimension pairs present in the reviewed permission registry are selectable.
+Production remains unavailable until verified SSO is configured.
 """
 import os
 from pathlib import Path
@@ -38,7 +38,7 @@ if not DB.exists():
 
 role_permissions = [p for (role, _), p in permissions.items() if role == user.role]
 if not role_permissions:
-    st.warning("No metrics have been approved for this role. Contact the data owner.")
+    st.warning("No KPI metrics are approved for this role in the current demo policy. Contact the data owner.")
     st.stop()
 
 with duckdb.connect(str(DB), read_only=True) as con:
@@ -58,10 +58,6 @@ metric_id = labels[selected_label]
 permission = authorize_metric(user, metric_id, permissions)
 
 available_dimensions = list(permission.dimensions)
-if not available_dimensions:
-    st.warning("No dimensions have been approved for this metric and role.")
-    st.stop()
-
 dimension = st.selectbox("2. Choose an authorised dimension", available_dimensions)
 authorize_dimension(user, permission, dimension)
 
@@ -99,33 +95,26 @@ if dimension in ("department", "team"):
             st.stop()
         team_id = st.selectbox("4. Choose team", teams)
 
-period_min = st.date_input("Start date", value=None)
-period_max = st.date_input("End date", value=None)
-if period_min and period_max and period_min > period_max:
-    st.error("Start date must be on or before end date.")
-    st.stop()
-
-# Metric-specific grain, organization key and population-size column must be
-# explicitly supplied in the permission registry. No implicit column guessing.
-with (CONFIG / "metric_permissions.csv").open(encoding="utf-8-sig") as f:
-    registry = pd.read_csv(f).fillna("")
-row = registry[
-    registry.role.astype(str).str.upper().eq(user.role)
-    & registry.metric_id.astype(str).str.upper().eq(metric_id)
-].iloc[0]
-grain = str(row.get("metric_grain", "")).lower()
-org_key = str(row.get("org_key_column", "")).strip()
-group_size_column = str(row.get("group_size_column", "")).strip()
-if grain not in {"company", "department", "team"} or not org_key:
-    st.error("Metric grain and organisational key are not configured. Result withheld.")
-    st.stop()
+grain = permission.metric_grain
+org_key = permission.org_key_column
+group_size_column = permission.group_size_column
 if dimension == "team" and grain != "team":
     st.error("This metric is not defined at team grain.")
     st.stop()
 if dimension == "department" and grain not in {"department", "team"}:
     st.error("This metric is not defined at department grain.")
     st.stop()
+if dimension == "company" and grain != "company":
+    st.error("This metric is not defined at company grain.")
+    st.stop()
 
+period_min = st.date_input("Start date", value=None)
+period_max = st.date_input("End date", value=None)
+if period_min and period_max and period_min > period_max:
+    st.error("Start date must be on or before end date.")
+    st.stop()
+
+# SQL identifiers are read only from the validated, committed permission registry.
 query = f"""
 SELECT CAST(period AS DATE) AS period,
        CAST({org_key} AS VARCHAR) AS org_key,
@@ -159,20 +148,31 @@ except Exception as exc:
     st.stop()
 
 if data.empty:
-    st.warning("No governed values exist for this selection.")
+    if metric_id == "M28":
+        st.info("Forecast error (MAPE) is unavailable: no matching actual headcount exists for the forecast periods in this warehouse snapshot.")
+    else:
+        st.warning("No governed values exist for this selection.")
     st.stop()
 
 if dimension != "company":
-    if not group_size_column or permission.minimum_group_size is None:
-        st.warning("Population size or minimum threshold is unavailable. All values are withheld.")
+    if permission.privacy_mode == "group_count":
+        if not group_size_column or permission.minimum_group_size is None:
+            st.error("Privacy configuration is incomplete. All values are withheld.")
+            st.stop()
+        safe_mask = data.group_size.apply(
+            lambda n: check_group_size(n, permission.minimum_group_size).allowed
+        )
+        withheld = int((~safe_mask).sum())
+        data = data.loc[safe_mask].copy()
+        if withheld:
+            st.info("One or more results were withheld by the minimum-group privacy rule.")
+    elif permission.privacy_mode == "governed_view":
+        # The source view has already applied the dictionary threshold in SQL.
+        # Do not infer a population count from all_metrics or expose employee rows.
+        st.caption(f"Privacy threshold: {permission.minimum_group_size}+ records, enforced upstream by the governed Phase 3 view.")
+    else:
+        st.error("No approved privacy enforcement is configured for this non-company view. Results withheld.")
         st.stop()
-    safe_mask = data.group_size.apply(
-        lambda n: check_group_size(n, permission.minimum_group_size).allowed
-    )
-    withheld = int((~safe_mask).sum())
-    data = data.loc[safe_mask].copy()
-    if withheld:
-        st.info(f"{withheld} result(s) withheld by the minimum-group privacy rule.")
 
 if data.empty:
     st.warning("All results were withheld because they did not meet the privacy threshold.")
@@ -190,6 +190,9 @@ a, b, c = st.columns(3)
 a.metric("Latest value", f"{latest.value:,.2f}")
 b.metric("Latest period", latest.period.strftime("%b %Y"))
 c.metric("Unit", str(latest.unit))
-st.plotly_chart(px.line(data, x="period", y="value", markers=True, title=str(catalog.loc[catalog.metric_id.eq(metric_id), "metric_name"].iloc[0])), use_container_width=True)
+metric_name = str(catalog.loc[catalog.metric_id.eq(metric_id), "metric_name"].iloc[0])
+st.plotly_chart(px.line(data, x="period", y="value", markers=True, title=metric_name), use_container_width=True)
 st.dataframe(data.drop(columns=["group_size"], errors="ignore"), use_container_width=True, hide_index=True)
 st.caption(str(latest.caveat or ""))
+
+st.info("M28 forecast error is intentionally not included in the selectable metrics until actual headcount is available for matching forecast periods. Forecast projections must not be presented as forecast accuracy.")
