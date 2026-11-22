@@ -20,7 +20,6 @@ PHASE4_ROOT = ROOT.parent
 DB = Path(os.getenv("PULSEIQ_DB_PATH", PHASE4_ROOT / "phase-3" / "outputs" / "pulseiq.duckdb"))
 CONFIG = ROOT / "config"
 
-st.set_page_config(page_title="PulseIQ | Governed KPI Explorer", page_icon="📊", layout="wide")
 st.title("PulseIQ | Governed KPI Explorer")
 st.caption("Role-authorised aggregate analytics. Employee-level records are never displayed.")
 
