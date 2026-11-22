@@ -34,14 +34,14 @@ client_id = "YOUR_OIDC_CLIENT_ID"
 client_secret = "YOUR_OIDC_CLIENT_SECRET"
 server_metadata_url = "https://accounts.google.com/.well-known/openid-configuration"
 
+PULSEIQ_DB_URL = "https://YOUR_PRIVATE_OBJECT_STORAGE_SIGNED_URL"
+PULSEIQ_DB_SHA256 = "64_CHARACTER_SHA256_OF_THE_APPROVED_DUCKDB_FILE"
+
 [identity.email_to_user_id]
 "approved-admin@example.com" = "demo_admin"
 "approved-hr@example.com" = "demo_hr"
 "approved-manager@example.com" = "demo_manager_d01"
 "approved-executive@example.com" = "demo_executive"
-
-PULSEIQ_DB_URL = "https://YOUR_PRIVATE_OBJECT_STORAGE_SIGNED_URL"
-PULSEIQ_DB_SHA256 = "64_CHARACTER_SHA256_OF_THE_APPROVED_DUCKDB_FILE"
 ```
 
 The four email addresses are placeholders. Replace them with approved test accounts. Configure the OIDC client redirect URI to exactly match the Streamlit URL plus `/oauth2callback`. The metadata URL shown is Google's example; use the selected identity provider's metadata URL.
