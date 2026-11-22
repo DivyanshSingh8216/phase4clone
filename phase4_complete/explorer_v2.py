@@ -76,6 +76,9 @@ if dimension in ("department", "team"):
             st.info("No authorised department scope is assigned.")
             st.stop()
         department_id = st.selectbox("3. Choose department", choices)
+        if user.role == "MANAGER" and department_id != user.department_id:
+            st.error("Access denied: this department is outside your assigned scope.")
+            st.stop()
     elif dimension == "team":
         scoped = hierarchy.copy()
         if user.role == "MANAGER":
@@ -93,6 +96,14 @@ if dimension in ("department", "team"):
             st.info("No authorised teams are mapped to this department.")
             st.stop()
         team_id = st.selectbox("4. Choose team", teams)
+        # Re-check the submitted selection on the server, not only in the UI options.
+        if user.role == "MANAGER":
+            if department_id is not None and department_id != user.department_id:
+                st.error("Access denied: this department is outside your assigned scope.")
+                st.stop()
+            if team_id not in user.team_ids:
+                st.error("Access denied: this team is outside your assigned scope.")
+                st.stop()
 elif dimension == "source":
     with duckdb.connect(str(DB), read_only=True) as con:
         sources = con.execute(
