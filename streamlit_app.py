@@ -54,7 +54,10 @@ def install_hosted_warehouse() -> Path:
     os.environ["PULSEIQ_DB_PATH"]=str(target)
     return target
 
-st.title("PulseIQ | Secure sign-in")
+st.set_page_config(page_title="PulseIQ | Governed KPI Explorer", page_icon="📊", layout="wide")
+
+if not st.user.is_logged_in:
+    st.title("PulseIQ | Secure sign-in")
 if not st.user.is_logged_in:
     st.write("Sign in with your organisation-approved account to access governed PulseIQ metrics.")
     st.login()
