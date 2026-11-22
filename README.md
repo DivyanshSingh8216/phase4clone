@@ -31,7 +31,7 @@ Manager scope comes only from the approved `demo_users.csv` department/team assi
 |---|---|
 | 16 | Monthly report builder and manually triggered GitHub report workflow; scheduled cadence and clean-machine evidence remain to verify |
 | 17 | Streamlit deployment entry point and hosted snapshot validation; public deployment, scheduled warehouse refresh, phone and stranger tests remain external |
-| 18 | OIDC identity mapping and fail-closed policy foundation; full role matrix, hierarchy drilldown and break-it acceptance remain open |
+| 18 | Role-specific 28-metric permission registry, source/team/department grain controls, manager assignment scoping and policy tests added; local test run, privacy break-it evidence and production approval remain to verify |
 | 19 | Five-metric FastAPI service and lineage endpoints; production identity proxy and separate API deployment remain open |
 | 20 | Board pack and release notes; live-data reconciliation, demo recording, final challenge evidence and final release tag remain open |
 
