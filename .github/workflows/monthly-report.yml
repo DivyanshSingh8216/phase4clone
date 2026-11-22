@@ -1,8 +1,6 @@
 name: PulseIQ monthly report
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 5 2 * *" # 05:00 UTC on the 2nd day of each month
 permissions:
   contents: read
   actions: read
@@ -15,18 +13,29 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: phase-4/requirements.txt
-      - name: Install Phase 4 dependencies
-        run: python -m pip install -r phase-4/requirements.txt
-      - name: Build report
+          cache-dependency-path: requirements.txt
+      - name: Require approved Phase 3 data bundle
+        env:
+          PULSEIQ_DATA_BUNDLE_BASE64: ${{ secrets.PULSEIQ_DATA_BUNDLE_BASE64 }}
         run: |
-          python phase-4/build_report.py \
-            --start 2025-04-01 \
-            --end "$(date -u +%Y-%m-%d)" \
-            --format both
+          if [ -z "$PULSEIQ_DATA_BUNDLE_BASE64" ]; then
+            echo "::error::Configure PULSEIQ_DATA_BUNDLE_BASE64 with an approved ZIP containing pulseiq.duckdb and the Phase 3 evidence CSVs."
+            exit 1
+          fi
+          mkdir -p phase3-data
+          printf '%s' "$PULSEIQ_DATA_BUNDLE_BASE64" | base64 --decode > /tmp/phase3-data.zip
+          unzip -q /tmp/phase3-data.zip -d phase3-data
+          test -f phase3-data/pulseiq.duckdb
+      - name: Install pinned Phase 4 dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Build report
+        env:
+          PULSEIQ_DB_PATH: ${{ github.workspace }}/phase3-data/pulseiq.duckdb
+        run: |
+          python build_report.py --start 2025-04-01 --end "$(date -u +%Y-%m-%d)" --format both
       - uses: actions/upload-artifact@v4
         with:
           name: pulseiq-monthly-report
-          path: phase-4/reports/*
+          path: reports/*
           if-no-files-found: error
           retention-days: 90
