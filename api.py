@@ -30,7 +30,7 @@ def get_user(x_role: str, x_department_id: str | None,
              authenticated_role: str | None = None, authenticated_department: str | None = None):
     # In production, only accept identity claims injected by a trusted reverse proxy
     # that strips caller-supplied copies of these headers. Never trust X-Role from clients.
-    if os.getenv("PULSEIQ_AUTH_MODE", "development").lower() == "production":
+    if os.getenv("PULSEIQ_AUTH_MODE", "production").lower() == "production":
         role, department = authenticated_role, authenticated_department
         if not role:
             raise HTTPException(status_code=401, detail="Authenticated identity claims are required.")
