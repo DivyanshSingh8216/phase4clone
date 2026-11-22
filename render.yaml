@@ -16,7 +16,7 @@ services:
     runtime: docker
     dockerContext: .
     dockerfilePath: ./phase-4/Dockerfile
-    dockerCommand: streamlit run explorer.py --server.address 0.0.0.0 --server.port $PORT
+    dockerCommand: streamlit run streamlit_app.py --server.address 0.0.0.0 --server.port $PORT
     envVars:
       - key: PULSEIQ_DB_PATH
         value: /app/phase-3/outputs/pulseiq.duckdb
