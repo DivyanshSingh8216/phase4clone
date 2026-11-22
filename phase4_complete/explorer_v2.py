@@ -223,7 +223,15 @@ a.metric("Latest value", f"{latest.value:,.2f}")
 b.metric("Latest period", latest.period.strftime("%b %Y"))
 c.metric("Unit", str(latest.unit))
 metric_name = str(catalog.loc[catalog.metric_id.eq(metric_id), "metric_name"].iloc[0])
-st.plotly_chart(px.line(data, x="period", y="value", markers=True, title=metric_name), use_container_width=True)
+if metric_id in {"M21", "M27"} and data["period"].nunique() <= 1:
+    snapshot_label = "Overdue receivables snapshot" if metric_id == "M21" else "High-risk share snapshot"
+    st.info(f"{snapshot_label}: this metric has only one reporting period in the current warehouse. It is shown as a point-in-time value, not a historical trend.")
+    st.plotly_chart(
+        px.bar(data, x=data["period"].dt.strftime("%b %Y"), y="value", title=metric_name),
+        use_container_width=True,
+    )
+else:
+    st.plotly_chart(px.line(data, x="period", y="value", markers=True, title=metric_name), use_container_width=True)
 st.dataframe(data.drop(columns=["group_size"], errors="ignore"), use_container_width=True, hide_index=True)
 st.caption(str(latest.caveat or ""))
 

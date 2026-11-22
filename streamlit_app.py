@@ -17,9 +17,6 @@ ROOT = Path(__file__).resolve().parent
 PACKAGE = ROOT / "phase4_complete"
 sys.path.insert(0, str(PACKAGE))
 
-# Production is the safe default. Local demo access must be explicitly enabled
-# by setting PULSEIQ_AUTH_MODE=development and PULSEIQ_DEMO_USER to an approved
-# user_id from phase4_complete/config/demo_users.csv.
 AUTH_MODE = os.getenv("PULSEIQ_AUTH_MODE", "production").strip().lower()
 if AUTH_MODE not in {"production", "development"}:
     st.error("Invalid PULSEIQ_AUTH_MODE. Use 'production' or 'development'.")
@@ -45,7 +42,6 @@ def install_hosted_warehouse() -> Path:
     if target.exists() and hashlib.sha256(target.read_bytes()).hexdigest() == expected:
         os.environ["PULSEIQ_DB_PATH"] = str(target)
         return target
-
     target_dir.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(prefix="pulseiq-", suffix=".part", dir=target_dir)
     os.close(fd)
@@ -74,37 +70,35 @@ def install_hosted_warehouse() -> Path:
     finally:
         if tmp_path.exists():
             tmp_path.unlink()
-
     os.environ["PULSEIQ_DB_PATH"] = str(target)
     return target
 
 
 def configure_local_warehouse() -> Path:
-    """Use an existing local Phase 3 warehouse without downloading hosted data."""
     configured = os.getenv("PULSEIQ_DB_PATH", "").strip()
     candidates = [Path(configured)] if configured else []
-    candidates.extend(
-        [
-            ROOT / "phase-3" / "outputs" / "pulseiq.duckdb",
-            ROOT / "phase3-data" / "pulseiq.duckdb",
-            ROOT / "outputs" / "pulseiq.duckdb",
-        ]
-    )
+    candidates.extend([
+        ROOT / "phase4_complete" / "data" / "pulseiq.duckdb",
+        ROOT / "pulseiq.duckdb",
+        ROOT / "phase-3" / "outputs" / "pulseiq.duckdb",
+        ROOT / "phase3-data" / "pulseiq.duckdb",
+        ROOT / "outputs" / "pulseiq.duckdb",
+    ])
     for candidate in candidates:
         if candidate.is_file():
             resolved = candidate.resolve()
             os.environ["PULSEIQ_DB_PATH"] = str(resolved)
             return resolved
     raise FileNotFoundError(
-        "Local PulseIQ warehouse not found. Set PULSEIQ_DB_PATH to your existing "
-        "Phase 3 pulseiq.duckdb file. The original database is opened read-only."
+        "Local PulseIQ warehouse not found. Run scripts/repair_metrics.py --download-db "
+        "or set PULSEIQ_DB_PATH to your Phase 3 pulseiq.duckdb file. The original "
+        "database is opened read-only."
     )
 
 
 st.set_page_config(page_title="PulseIQ | Governed KPI Explorer", page_icon="📊", layout="wide")
 
 if AUTH_MODE == "production":
-    # Do not access st.user.is_logged_in unless an OIDC [auth] section exists.
     try:
         auth_configured = "auth" in st.secrets
     except Exception:

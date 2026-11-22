@@ -4,5 +4,16 @@ __pycache__/
 .venv/
 venv/
 .env
+.env.*
+!.env.example
 reports/*.pdf
 reports/*.xlsx
+reports/*.csv
+reports/*.json
+reports/pdf_visual_check/
+*.duckdb
+*.duckdb.wal
+*.part
+*.backup
+*.cutoff-backup
+*.path-backup

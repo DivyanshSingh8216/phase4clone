@@ -1,55 +1,79 @@
-# PulseIQ Phase 4 | Streamlit deployment
+# PulseIQ Phase 4 | Submission Repository
 
-Phase 4 is additive to the Phase 3 warehouse. The original `PulseIQ_Dataset.xlsx` and all Phase 1-3 source artifacts must remain unchanged.
+PulseIQ Phase 4 extends the Phase 3 governed warehouse with reporting, API,
+deployment scaffolding, board-pack outputs, and a role-aware Streamlit KPI
+Explorer (Task 18).
 
-## Streamlit Community Cloud
+## Repository layout
 
-The Streamlit entry point is `streamlit_app.py`. Deploy the `phase4-complete` branch from GitHub and set the main file to `streamlit_app.py`. Configure OIDC and the hosted warehouse secrets as documented in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+- `streamlit_app.py`: Streamlit application entry point.
+- `phase4_complete/`: Task 18 explorer, role policy, privacy helpers, config,
+  tests, and implementation notes.
+- `scripts/`: release validation and metric validation/bootstrap utilities.
+- `docs/`: deployment, API lineage, metric lineage, handover, and acceptance.
+- `board_pack/`: Phase 4 board-pack presentation.
+- `reports/`: generated validation/report outputs (local outputs are ignored).
 
-The app uses Streamlit OIDC sign-in, maps the verified email to an approved `user_id`, and reads role/scope from `phase4_complete/config/demo_users.csv`. It downloads a hosted HTTPS DuckDB snapshot, verifies its SHA-256 checksum and required tables, and opens it read-only. No laptop upload or committed database is used.
+## Quick start (Windows PowerShell)
 
-## Task 18 role and metric access policy
-
-The four application roles have different responsibilities and metric scopes. The registry is based on the Phase 3 governed `all_metrics` view, not solely on the catalogue's intended grain.
-
-| Role | Metric access | Rationale |
-|---|---|---|
-| ADMIN | M01-M28, at the available governed grain | Trusted platform/data administrator. Can inspect all governed aggregates, but does not bypass SQL-view suppression or gain employee-level rows. |
-| HR | M01-M15, M27-M28, at department grain | Workforce operations: headcount, hiring, exits, attrition, payroll aggregates, attendance, leave, attrition-risk share and forecast error. Gross/net pay and payroll metrics are only aggregated by department and the Phase 3 view applies its minimum group rules. |
-| MANAGER | M01-M06, M09-M14 at the assigned department; M24 at assigned team | Department workforce planning, attrition, employer-cost/overtime/variable-pay aggregates and attendance. Team velocity is available only for the manager's assigned team IDs. No employee pay detail, HR risk scores, or company-wide finance data. |
-| EXECUTIVE | M16-M21, M22-M23, M25-M26 at company grain | Company financial performance, receivables, aggregate task delivery/cycle-time and anomaly-rate indicators. No department/team drilldown or employee-level workforce data. |
-
-### Source-grain limitations that the policy deliberately respects
-
-The metric catalogue describes M16 as account-grain, M21 as client-grain, M22-M23 and M25 as team-grain, and M26 as source-grain. However, the current Phase 3 `all_metrics` view exposes only `metric_id, metric_name, period, department_id, value, unit, min_group_size, caveat`. The actual views for M16, M21, M22, M23, M25 and M26 return a NULL `department_id`; they therefore appear only as company-level aggregates in this explorer. The policy does not pretend that account, client, team or source drilldowns exist when the current data view does not expose those keys.
-
-M24 is the exception: its `department_id` field explicitly contains `team_id`, so the explorer treats it as team-grain and restricts managers to their trusted team assignments. M01-M15 and M27 expose department keys and use the source-defined minimum group thresholds. M28 is permissioned for HR and ADMIN at department grain but currently has no matching actuals, so the explorer must show it as unavailable rather than zero.
-
-The demo manager is assigned to D01 and T01/T02 in `demo_users.csv`. The hierarchy file currently contains IDs only; it does not provide department names or business-function labels. Consequently, role policy is based on the defined application roles and the available metric scopes, not guessed department names. Before production, the data owner and HR/privacy owner must approve role assignments and confirm the hierarchy mapping. ADMIN is privileged and must be assigned only to trusted administrators.
-
-## Other Phase 4 deliverables
-
-| Task | Current repository status |
-|---|---|
-| 16 | Monthly report builder and manually triggered GitHub report workflow; scheduled cadence and clean-machine evidence remain to verify |
-| 17 | Streamlit deployment entry point and hosted snapshot validation; public deployment, scheduled warehouse refresh, phone and stranger tests remain external |
-| 18 | Role-specific 28-metric permission registry, source/team/department grain controls, manager assignment scoping and policy tests added; local test run, privacy break-it evidence and production approval remain to verify |
-| 19 | Five-metric FastAPI service and lineage endpoints; production identity proxy and separate API deployment remain open |
-| 20 | Board pack and release notes; live-data reconciliation, demo recording, final challenge evidence and final release tag remain open |
-
-## Local setup
-
-Use Python 3.11 and the pinned dependencies:
+Python 3.11 is recommended.
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-python -m pytest -q
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe scripts\repair_metrics.py --download-db --validate
+$env:PULSEIQ_AUTH_MODE = "development"
+$env:PULSEIQ_DEMO_USER = "demo_admin"
+.\.venv\Scripts\python.exe -m streamlit run streamlit_app.py
 ```
 
-For local development only, set `PULSEIQ_AUTH_MODE=development` and `PULSEIQ_DEMO_USER` to a user in `phase4_complete/config/demo_users.csv`, then run the role explorer with the approved local Phase 3 warehouse. Never expose development mode publicly.
+The metric utility downloads the verified Phase 3 warehouse into
+`phase4_complete/data/pulseiq.duckdb`, checks its Git blob SHA-1, opens it
+read-only, and writes `reports/metric_validation.csv`. It never edits the
+warehouse. To select another approved demo role, set
+`PULSEIQ_DEMO_USER` to `demo_hr`, `demo_manager_d01`, or
+`demo_executive`.
 
-## Data integrity
+## Metric handling and data integrity
 
-The source workbook is read-only. Work only on copies and derived outputs. Never commit credentials, signed object URLs, the private DuckDB warehouse, or personal employee-level data.
+- M28 is unavailable when matching forecast/actual observations are absent;
+  it must never be shown as 0% accuracy.
+- M21 and M27 are snapshots when only one reporting period exists. The UI
+  labels them as snapshots instead of implying a time trend.
+- M05/M06 null or suppressed values remain missing, not zero.
+- M18 is checked against matched M17/M16 periods. The official metric
+  denominator must be confirmed before any source value is changed.
+- M09 requires reconciliation against the approved ledger account mapping.
+- M25 negative cycle-time values are flagged for source inspection.
+- The database is opened read-only. The original Phase 3 source workbook and
+  database are not modified.
+
+## Demo identities
+
+| User ID | Role |
+|---|---|
+| demo_admin | ADMIN |
+| demo_hr | HR |
+| demo_manager_d01 | MANAGER |
+| demo_executive | EXECUTIVE |
+
+Development mode is for local demonstration only. Production must use verified
+OIDC identity and the configured hosted warehouse secrets. Never expose demo
+authentication publicly.
+
+## Validation
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe scripts\validate_release.py
+```
+
+Test execution and production deployment must be verified in the target
+environment before claiming acceptance. See `docs/ACCEPTANCE_CHECKLIST.md`
+and `phase4_complete/docs/IMPLEMENTATION_GAPS.md`.
+
+## Data and secrets policy
+
+The downloaded DuckDB is a local runtime artifact and is excluded from Git.
+Do not commit employee-level source data, credentials, private object URLs,
+virtual environments, generated reports, or machine-specific files.
