@@ -3,8 +3,8 @@ from dataclasses import dataclass
 import csv
 
 ROLES = {"ADMIN", "HR", "MANAGER", "EXECUTIVE"}
-DIMENSIONS = {"company", "department", "team"}
-GRAINS = {"company", "department", "team"}
+DIMENSIONS = {"company", "department", "team", "source"}
+GRAINS = {"company", "department", "team", "source"}
 PRIVACY_MODES = {"none", "group_count", "governed_view"}
 
 @dataclass(frozen=True)
