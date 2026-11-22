@@ -1,49 +1,75 @@
-# Deployment guide
+# Streamlit Community Cloud deployment
 
-## Fast hosted preview: Render
+This is the deployment path for PulseIQ. The Render Blueprint is not used.
 
-The repository now includes a Render Blueprint for a **password-gated, executive-only dashboard preview**. It is deliberately narrower than the final four-role production system.
+## 1. Host the approved warehouse
 
-1. Push/pull the latest `phase4-complete` branch and open the repository in Render.
-2. Choose **New + → Blueprint**, select this repository and branch, then apply `render.yaml`.
-3. In the created `pulseiq-kpi-explorer` service, add the secret environment variable `PULSEIQ_DEMO_PASSWORD`. Use a strong, unique password and do not commit it.
-4. Wait for the Docker build and deployment to finish. Confirm the health check `/_stcore/health` passes.
-5. Open the public service URL and sign in with the demo password.
-6. If the warehouse is not installed, use the in-app uploader to upload the approved Phase 3 `pulseiq.duckdb` file. The app validates that it contains `all_metrics` and `metric_catalog` before saving it to `/data/pulseiq.duckdb` on the persistent disk.
-7. Do not upload the original source workbook and do not put the database in Git.
-8. After installation, verify M16, M17, M18, M21 and M22.
+The dashboard must not depend on a file uploaded from a developer's laptop or a database committed to GitHub.
 
-The Render Blueprint requests a Starter web service and a 1 GB persistent disk. Persistent disks require a paid Render service. The database is intentionally not packaged in the Docker image. If Render Shell is unavailable on the selected plan, use an approved secure transfer method to place the database on the mounted disk.
+1. Place the approved, read-only Phase 3 DuckDB snapshot in private HTTPS object storage.
+2. Calculate its SHA-256 checksum.
+3. Verify that it contains the governed `all_metrics` and `metric_catalog` tables.
+4. Keep the object URL private and rotate signed URLs when the snapshot changes.
 
-## What this preview does and does not prove
+The app downloads the snapshot at startup, verifies its checksum, validates required tables and opens it read-only. It rejects non-HTTPS URLs and files larger than 2 GB.
 
-- It exposes only company-grain M16, M17, M18, M21 and M22.
-- A shared demo password gates access. This is suitable for a controlled demonstration, **not SSO, not individual user authentication, and not the four-role Task 18 acceptance test**.
-- No HR, ADMIN or MANAGER role switching is exposed in this public preview.
-- The API is not part of this single-service preview. Keep the API private until verified identity claims and a trusted proxy are configured.
-- The preview uses a fixed Phase 3 snapshot. It does not implement automated warehouse refresh, alerting or freshness orchestration.
+## 2. Deploy from GitHub
 
-## Local container check
+1. Push the `phase4-complete` branch.
+2. Open Streamlit Community Cloud and select **Create app**.
+3. Repository: `DivyanshSingh8216/phase4clone`.
+4. Branch: `phase4-complete`.
+5. Main file path: `streamlit_app.py`.
+6. Select Python 3.11 if prompted.
 
-Run from the repository root:
+## 3. Configure app secrets and OIDC
 
-```powershell
-docker build -t pulseiq-phase4 .
-docker run --rm -p 8501:8501 -e PULSEIQ_DEMO_PASSWORD="local-demo-password" -e PULSEIQ_DB_PATH=/data/pulseiq.duckdb -v "C:\\path\\to\\outputs:/data:ro" pulseiq-phase4 streamlit run explorer.py --server.address 0.0.0.0 --server.port 8501
+In **App settings → Secrets**, add TOML with real values:
+
+```toml
+[auth]
+redirect_uri = "https://YOUR-APP-NAME.streamlit.app/oauth2callback"
+cookie_secret = "REPLACE_WITH_A_LONG_RANDOM_SECRET"
+client_id = "YOUR_OIDC_CLIENT_ID"
+client_secret = "YOUR_OIDC_CLIENT_SECRET"
+server_metadata_url = "https://accounts.google.com/.well-known/openid-configuration"
+
+[identity.email_to_user_id]
+"approved-admin@example.com" = "demo_admin"
+"approved-hr@example.com" = "demo_hr"
+"approved-manager@example.com" = "demo_manager_d01"
+"approved-executive@example.com" = "demo_executive"
+
+PULSEIQ_DB_URL = "https://YOUR_PRIVATE_OBJECT_STORAGE_SIGNED_URL"
+PULSEIQ_DB_SHA256 = "64_CHARACTER_SHA256_OF_THE_APPROVED_DUCKDB_FILE"
 ```
 
-The mounted folder must contain the approved `pulseiq.duckdb`. The source workbook remains untouched.
+The four email addresses are placeholders. Replace them with approved test accounts. Configure the OIDC client redirect URI to exactly match the Streamlit URL plus `/oauth2callback`. The metadata URL shown is Google's example; use the selected identity provider's metadata URL.
 
-## API deployment gate
+The email-to-user map links a verified OIDC email to a `user_id` in `phase4_complete/config/demo_users.csv`. Role, department and team assignments are then read from that registry, not from browser input.
 
-Do not expose `api.py` publicly until a trusted authentication proxy or OIDC integration is configured to verify identity and strip caller-supplied `X-Authenticated-Role` and `X-Authenticated-Department` headers. The API's current production headers are trusted-proxy claims, not self-authenticating credentials.
+## 4. Current permission boundary
 
-## Full production acceptance still requires
+The committed policy currently grants:
+- EXECUTIVE: M16, M17, M18, M21 and M22 at company grain.
+- HR: M27 at department grain, with minimum group size 10 enforced by the governed Phase 3 view.
+- ADMIN and MANAGER: no KPI grants.
 
-1. Approved SSO/OIDC and role-to-user mapping.
-2. Owner-approved four-role metric/dimension permissions and authoritative department/team hierarchy.
-3. Privacy tests against small groups, differencing and adversarial filters.
-4. Approved refresh pipeline, persistent warehouse, timestamp and failure alerts.
-5. Separate API deployment behind verified identity, with API docs and lineage tests.
-6. Live URL, phone and independent-user test evidence.
-7. Reconciled PDF/XLSX, board deck, final challenge evidence and release tag.
+This is fail-closed and does **not** yet satisfy the complete four-role company → department → team self-service requirement. Do not add grants until the official metric dictionary, data-owner approvals and authoritative hierarchy confirm metrics, grains, dimensions and thresholds. Small manager teams must remain suppressed unless the approved policy proves the result safe.
+
+## 5. Deployment tests
+
+- Unknown OIDC emails are denied.
+- Each approved account sees only its assigned role.
+- EXECUTIVE sees only its five company KPIs.
+- HR sees only M27 department aggregates and no group below 10.
+- ADMIN and MANAGER receive no KPI data under the current policy.
+- Query-parameter changes and direct metric/department/team IDs cannot bypass policy.
+- Data cutoff and caveats are visible.
+- Phone and independent-user tests are recorded.
+
+## 6. Refresh and API limitations
+
+The app loads a checksum-pinned snapshot from the HTTPS object URL at startup. It is not itself a scheduled ETL refresh service. A separate scheduled job must publish a new approved snapshot and update the URL/checksum secrets together. Do not claim automated refresh until that workflow, timestamp and failure handling have been verified.
+
+FastAPI is not deployed by this Streamlit app. Deploy it separately behind verified identity claims before exposing it publicly.
