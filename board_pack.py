@@ -11,7 +11,7 @@ from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
 
 ROOT=Path(__file__).resolve().parent
 OUT=ROOT/"board_pack"; OUT.mkdir(exist_ok=True)
-P3=ROOT.parent/"phase-3"/"outputs"
+P3=Path(__import__("os").environ.get("PULSEIQ_OUTPUTS_DIR", str(ROOT.parent/"phase-3"/"outputs")))
 def csv(n): return pd.read_csv(P3/n)
 pnl=csv("phase3_day11_pnl_monthly.csv")
 cash=csv("phase3_day12_cash_flow_monthly.csv")
@@ -42,7 +42,7 @@ def metric_card(s,x,y,w,label,value,caption=""):
     if caption: textbox(s,x+.18,y+.91,w-.36,.23,caption,8,GREY)
 def add_chart(s,df,cat,series,x,y,w,h,title,chart_type=XL_CHART_TYPE.LINE):
     data=CategoryChartData(); data.categories=[str(v)[:7] for v in df[cat].tolist()]
-    for col,label in series: data.add_series(label,tuple(float(v) for v in df[col].fillna(0)))
+    for col,label in series: data.add_series(label,tuple(None if pd.isna(v) else float(v) for v in df[col]))
     chart=s.shapes.add_chart(chart_type, Inches(x), Inches(y), Inches(w), Inches(h), data).chart
     chart.has_legend=len(series)>1
     if chart.has_legend: chart.legend.position=XL_LEGEND_POSITION.BOTTOM
