@@ -8,13 +8,10 @@ The repository now includes a Render Blueprint for a **password-gated, executive
 2. Choose **New + → Blueprint**, select this repository and branch, then apply `render.yaml`.
 3. In the created `pulseiq-kpi-explorer` service, add the secret environment variable `PULSEIQ_DEMO_PASSWORD`. Use a strong, unique password and do not commit it.
 4. Wait for the Docker build and deployment to finish. Confirm the health check `/_stcore/health` passes.
-5. Open the Render Shell for the service and confirm the persistent disk is mounted at `/data`.
-6. Upload the approved Phase 3 warehouse file to `/data/pulseiq.duckdb`. Do not upload the original source workbook and do not put the database in Git.
-7. Confirm the file exists and is readable:
-   ```bash
-   ls -lh /data/pulseiq.duckdb
-   ```
-8. Restart/redeploy the service if needed, open its public URL, sign in with the configured demo password, and verify M16, M17, M18, M21 and M22.
+5. Open the public service URL and sign in with the demo password.
+6. If the warehouse is not installed, use the in-app uploader to upload the approved Phase 3 `pulseiq.duckdb` file. The app validates that it contains `all_metrics` and `metric_catalog` before saving it to `/data/pulseiq.duckdb` on the persistent disk.
+7. Do not upload the original source workbook and do not put the database in Git.
+8. After installation, verify M16, M17, M18, M21 and M22.
 
 The Render Blueprint requests a Starter web service and a 1 GB persistent disk. Persistent disks require a paid Render service. The database is intentionally not packaged in the Docker image. If Render Shell is unavailable on the selected plan, use an approved secure transfer method to place the database on the mounted disk.
 
