@@ -126,11 +126,7 @@ def load_data(start: str, end: str, cutoff: str | None):
         raise RuntimeError("No governed KPI rows were found in the selected period.")
     # Report the latest date actually present in the selected governed KPI rows.
     # The requested end date is a reporting boundary, not evidence of data freshness.
-    effective_cutoff = (
-        pd.Timestamp(cutoff).date().isoformat()
-        if cutoff
-        else metrics["period"].max().date().isoformat()
-    )
+    effective_cutoff = metrics["period"].max().date().isoformat()
     return metrics, outputs, effective_cutoff
 
 def _fmt(v):
