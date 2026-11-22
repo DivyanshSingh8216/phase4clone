@@ -38,7 +38,16 @@ def get_user(x_role: str, x_department_id: str | None,
         role, department = x_role or "EXECUTIVE", x_department_id
     try: return principal(role, department)
     except PermissionError as e: raise HTTPException(status_code=403,detail=str(e))
+def authorize_api_metric(user, metric_id):
+    # The published API metrics are company-grain KPIs. Only the executive role
+    # has an approved company-level grant in the committed conservative policy.
+    if user.role != "EXECUTIVE":
+        raise HTTPException(status_code=403, detail="This API metric is not authorised for your role.")
+    if metric_id not in LINEAGE:
+        raise HTTPException(status_code=404, detail="Metric not exposed by this API.")
+
 def query_metric(metric_id, period, requested_department, user):
+    authorize_api_metric(user, metric_id)
     if metric_id not in LINEAGE: raise HTTPException(status_code=404,detail="Metric not exposed by this API.")
     mode, dept=department_filter(user,requested_department)
     try: con=connect()
@@ -75,6 +84,8 @@ def list_metrics(x_role: str=Header(default="EXECUTIVE"),x_department_id: Option
                  authenticated_role: Optional[str]=Header(default=None, alias="X-Authenticated-Role"),
                  authenticated_department: Optional[str]=Header(default=None, alias="X-Authenticated-Department")):
     user=get_user(x_role,x_department_id,authenticated_role,authenticated_department)
+    if user.role != "EXECUTIVE":
+        raise HTTPException(status_code=403, detail="The API catalogue is currently approved for EXECUTIVE only.")
     try:
         con=connect()
         try:
